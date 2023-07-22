@@ -11,7 +11,8 @@ class BLIP2Captioning:
         self.quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_compute_dtype=torch.half,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16
         )
 
     def load(self):
@@ -34,6 +35,7 @@ class BLIP2Captioning:
     def apply(self, image):
         if self.model is None or self.processor is None:
             return ""
-        inputs = self.processor(images=image, return_tensors="pt").to(devices.device).to(dtype=torch.float16)
-        ids = self.model.generate(**inputs)
-        return self.processor.batch_decode(ids, skip_special_tokens=True)
+        with torch.autocast(devices.device.type):
+            inputs = self.processor(images=image, return_tensors="pt").to(devices.device)
+            ids = self.model.generate(**inputs)
+            return self.processor.batch_decode(ids, skip_special_tokens=True)

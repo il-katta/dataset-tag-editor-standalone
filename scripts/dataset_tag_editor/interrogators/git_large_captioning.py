@@ -13,7 +13,8 @@ class GITLargeCaptioning:
         self.quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_compute_dtype=torch.half,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16
         )
 
     def load(self):
@@ -36,9 +37,10 @@ class GITLargeCaptioning:
     def apply(self, image):
         if self.model is None or self.processor is None:
             return ""
-        inputs = self.processor(images=image, return_tensors="pt").to(devices.device)
-        ids = self.model.generate(
-            pixel_values=inputs.pixel_values.to(torch.float16),
-            max_length=settings.current.interrogator_max_length,
-        )
-        return self.processor.batch_decode(ids, skip_special_tokens=True)
+        with torch.autocast(devices.device.type):
+            inputs = self.processor(images=image, return_tensors="pt").to(devices.device)
+            ids = self.model.generate(
+                pixel_values=inputs.pixel_values,
+                max_length=settings.current.interrogator_max_length,
+            )
+            return self.processor.batch_decode(ids, skip_special_tokens=True)
