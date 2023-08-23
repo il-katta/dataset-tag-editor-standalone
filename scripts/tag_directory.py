@@ -1,3 +1,15 @@
+# https://github.com/toshiaki1729/dataset-tag-editor-standalone.git
+# scripts/tag_directory.py
+#
+# This script will tag all images in a directory using the models specified in 
+# the INTERROGATORS list in dte_logic.py. It will also resize the images to the
+# size specified in target_size. The tags will be saved in a .txt file with the
+# same name as the image file, but with the .txt extension. If the image already
+# has a .txt file, the tags will be appended to the existing tags.
+# The script will also filter out tags that are in the banned_tags list.
+# The script will also translate tags in the tag_translations dictionary.
+
+
 import os
 from pathlib import Path
 from tqdm import tqdm
@@ -118,12 +130,19 @@ def process_image(model:Tagger|Captioning, filename:str, source_dir:str|Path, ta
         new_image.close()
     
     image.close()
-        
+
+def is_image(filename:str) -> bool:
+    return any([
+        filename.endswith(".jpg"), 
+        filename.endswith(".png"), 
+        filename.endswith(".jpeg")
+    ])
+
 for model in tqdm(models, "models"):
     print(f"* loading {model.name()}")
     try:
         model.start()
-        for filename in tqdm([f for f in os.listdir(source_dirpath) if not f.endswith(".txt")], "process images"):
+        for filename in tqdm([f for f in os.listdir(source_dirpath) if is_image(f)], "process images"):
             try:
                 process_image(model, filename, source_dirpath, target_dirpath)
             except Exception as e:
@@ -141,5 +160,3 @@ for filename in tqdm(list(image_tags.keys()), "writing tags"):
     filepath = change_extension(filepath, ".txt")
     with open(filepath, "w") as f:
         f.writelines([", ".join(image_tags[filename])])
-    print(f"writen {filepath}")
-
